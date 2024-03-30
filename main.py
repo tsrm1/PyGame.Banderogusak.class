@@ -86,8 +86,6 @@ if __name__ == '__main__':
         bonus = BaseObject(random.randint(0, WIDTH), 0, *BONUS_IMG_SIZE, 3, 2, bonus_img_speed, BONUS_IMG_MAX)
         return bonus                                # возвращяем данные очередного "бонуса"
 
-
-
     CHANGE_IMG_HERO = pygame.USEREVENT + 1
     pygame.time.set_timer(CHANGE_IMG_HERO, 125)               # установка таймера вызова функции смены изображения "героя", 125 мс
 
@@ -142,7 +140,6 @@ if __name__ == '__main__':
             bg.move(-1, 0)
             if bg.x <= -WIDTH:
                 bg.x = WIDTH
-            print(bg.rect)
 
         # Враги
         for enemy in enemies:
@@ -155,7 +152,6 @@ if __name__ == '__main__':
         #################################################################################################################
         # Построение картинки
         # Фон
-        # main_surface.fill((0,0,0))
         for bg in backgrounds:
             main_surface.blit(images[0][bg.img_numer], (bg.x, bg.y))        # накладываем поверность "бэкграунд" на основную поверхность "фон"
         
