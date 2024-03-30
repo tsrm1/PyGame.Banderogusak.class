@@ -1,4 +1,4 @@
-""" Игра "Бандерогусак"
+""" Игра 'Бандерогусак'
     На основе классов (ООП)
     Анимация героя (управление), фона, врагов, бонусов
 """
@@ -9,9 +9,6 @@ import spritesheet                      # импортируем библиот�
 from os import listdir                  # импортируем метод listdir
 import random                           # импортируем библиотеку random
 import time                             # импортируем библиотеку time  (time.sleep(3))
-
-
-
 
 
 if __name__ == '__main__':
@@ -31,14 +28,15 @@ if __name__ == '__main__':
     pygame.display.set_icon(pygame.image.load("image/Farm-Goose.ico"))              # устанавливаем иконку окна
     clock = pygame.time.Clock()             # создаём экземпляр класса Clock
     FPS = 30                                # устанавливаем частоту обработки цикла, FPS раз в секунду
-
+    RED = (255, 0, 0),              # цвет красный
     backgrounds = []
     enemies = []
     bonuses = []
     weapons = []
+    explotions = []
 
     BG_IMG_PATH = 'image/background.png'
-    BG_IMG_SPEED = 2, 0
+    BG_IMG_SPEED = 2
     BG_IMAGES = [pygame.transform.scale(pygame.image.load(BG_IMG_PATH).convert(), SCREEN_SIZE)]    # создаём поверхность "бекграунд" и загружаем на неё изображение
     BG_IMG_MAX = len(BG_IMAGES)
     
@@ -53,20 +51,42 @@ if __name__ == '__main__':
     ENEMY_IMG_PATH = 'image/Enemy'
     ENEMY_IMG_SIZE = 70, 25                     # размер изображения "врага" (ширина, высота) 
     # ENEMY_IMAGES = [pygame.transform.scale(pygame.image.load(ENEMY_IMG_PATH).convert_alpha(),ENEMY_IMG_SIZE)]
-    ENEMY_IMAGES = [pygame.transform.scale(pygame.image.load(ENEMY_IMG_PATH + '/' + file ).convert_alpha(), ENEMY_IMG_SIZE) for file in listdir(ENEMY_IMG_PATH)]
+    ENEMY_IMAGES = [pygame.transform.scale(pygame.image.load(ENEMY_IMG_PATH + '/' + file).convert_alpha(), ENEMY_IMG_SIZE) for file in listdir(ENEMY_IMG_PATH)]
     ENEMY_IMG_MAX = len(ENEMY_IMAGES)
 
-    BONUS_IMG_PATH = 'image/bonus.png'
+    BONUS_IMG_PATH = 'image/Bonus'
     BONUS_IMG_SIZE = 50, 83
-    BONUS_IMAGES = [pygame.transform.scale(pygame.image.load(BONUS_IMG_PATH).convert_alpha(), BONUS_IMG_SIZE)]    # создаём поверхность "бонуса" и загружаем на неё изображение
+    BONUS_IMAGES = [pygame.transform.scale(pygame.image.load(BONUS_IMG_PATH+ '/' + file).convert_alpha(), BONUS_IMG_SIZE) for file in listdir(BONUS_IMG_PATH)]  
     BONUS_IMG_MAX = len(BONUS_IMAGES)
 
-    images = [BG_IMAGES, HERO_IMAGES, ENEMY_IMAGES, BONUS_IMAGES]
+    HERO_EXPLOTION_IMG_PATH = 'image/sprite-explosion-48p-255x255.png'
+    HERO_EXPLOTION_IMG_SIZE = 256, 256
+    sprite_sheet_image_explotion_hero = pygame.image.load(HERO_EXPLOTION_IMG_PATH).convert_alpha()
+    sprite_sheet_hero_explotion = spritesheet.SpriteSheet(sprite_sheet_image_explotion_hero)
+    HERO_EXPLOTION_IMAGES = sprite_sheet_hero_explotion.strip_from_sheet(8, 6, 256, 256, 256, 256)   # (col_row, col_span, width_in, height_in, width_out, height_out, colour=(0, 0, 0))
+    HERO_EXPLOTION_IMG_MAX = len(HERO_EXPLOTION_IMAGES)
+
+
+    ENEMY_EXPLOTION_PATH = 'image/sprite-explosion-20p-192x192.png'
+    ENEMY_EXPLOTION_SIZE = 192, 192
+    sprite_sheet_image_explotion_bonus = pygame.image.load(ENEMY_EXPLOTION_PATH).convert_alpha()
+    sprite_sheet_bonus_explotion = spritesheet.SpriteSheet(sprite_sheet_image_explotion_bonus)
+    ENEMY_EXPLOTION_IMAGES = sprite_sheet_bonus_explotion.strip_from_sheet(5, 4, 192, 192, 192, 192)   # (col_row, col_span, width_in, height_in, width_out, height_out, colour=(0, 0, 0))
+    ENEMY_EXPLOTION_IMG_MAX = len(ENEMY_EXPLOTION_IMAGES)
+
+    WEAPON_IMG_PATH = 'image/sprite_farbe_9.png'
+    WEAPON_IMG_SIZE = 150, 150
+    sprite_sheet_image_weapon = pygame.image.load(WEAPON_IMG_PATH).convert_alpha()
+    sprite_sheet_weapon = spritesheet.SpriteSheet(sprite_sheet_image_weapon)
+    WEAPON_IMAGES = sprite_sheet_weapon.strip_from_sheet(3, 3, 700, 700, 150, 150)   # (col_row, col_span, width, height, scale, colour=(0, 0, 0))
+    WEAPON_IMG_MAX = len(WEAPON_IMAGES)
+
+    images = [BG_IMAGES, HERO_IMAGES, ENEMY_IMAGES, BONUS_IMAGES, ENEMY_EXPLOTION_IMAGES, HERO_EXPLOTION_IMAGES]
 
       
     # Создаём фон, type = 0
-    backgrounds.append(BaseObject(0, 0, *SCREEN_SIZE, 0, *BG_IMG_SPEED, BG_IMG_MAX))  # инициазируем объект класса BaseObject 
-    backgrounds.append(BaseObject(WIDTH, 0, *SCREEN_SIZE, 0, *BG_IMG_SPEED, BG_IMG_MAX))
+    backgrounds.append(BaseObject(0, 0, *SCREEN_SIZE, 0, BG_IMG_SPEED, 0, BG_IMG_MAX))  # инициазируем объект класса BaseObject 
+    backgrounds.append(BaseObject(WIDTH, 0, *SCREEN_SIZE, 0, BG_IMG_SPEED, 0, BG_IMG_MAX))
 
 
     # Создаём героя, type = 1
@@ -75,28 +95,56 @@ if __name__ == '__main__':
 
     # Создаём врага, type = 2
     def create_enemy():
-        enemy_img_speed_x = random.randint(4, 6)      # создаём произвольную скорость "врага"        
-        enemy_img_speed_y = random.random()      # создаём произвольную скорость "врага"        
+        enemy_img_speed_x = random.randint(BG_IMG_SPEED +2, BG_IMG_SPEED +4)    # создаём произвольную скорость "врага"        
+        enemy_img_speed_y = random.random()         # создаём произвольную скорость "врага"        
         enemy = BaseObject(WIDTH-70, random.randint(0, BILDINGS_HEIGHT), *ENEMY_IMG_SIZE, 2, enemy_img_speed_x, enemy_img_speed_y, ENEMY_IMG_MAX)  # инициазируем объект класса BaseObject 
         return enemy                                # возвращяем данные очередного "врага"
     
     # Создаём бонус, type = 3
     def create_bonus():
         bonus_img_speed = random.randint(2, 4)      # создаём произвольную скорость "бонуса"   
-        bonus = BaseObject(random.randint(0, WIDTH), 0, *BONUS_IMG_SIZE, 3, 2, bonus_img_speed, BONUS_IMG_MAX)
+        bonus = BaseObject(random.randint(0, WIDTH), 0, *BONUS_IMG_SIZE, 3, BG_IMG_SPEED, bonus_img_speed, BONUS_IMG_MAX)
         return bonus                                # возвращяем данные очередного "бонуса"
 
+    # Создаём взрыв, type = 4
+    def create_explotion_air(x, y, speed_x, speed_y):
+        exploation = BaseObject(x - 96, y -96, *ENEMY_EXPLOTION_SIZE, 4, speed_x, speed_y, ENEMY_EXPLOTION_IMG_MAX)
+        return exploation                                # возвращяем данные очередного "воздушного взрыва"
+    
+    # Создаём взрыв, type = 5
+    def create_explotion_hero(x, y, speed_x, speed_y):
+        exploation = BaseObject(x - 128, y -128, *HERO_EXPLOTION_IMG_SIZE, 5, speed_x, speed_y, HERO_EXPLOTION_IMG_MAX)
+        return exploation                                # возвращяем данные очередного "воздушного взрыва"
+    hero_explode = False
+
     CHANGE_IMG_HERO = pygame.USEREVENT + 1
-    pygame.time.set_timer(CHANGE_IMG_HERO, 125)               # установка таймера вызова функции смены изображения "героя", 125 мс
+    pygame.time.set_timer(CHANGE_IMG_HERO, 125)     # установка таймера вызова функции смены изображения "героя", 125 мс
 
     CREATE_ENEMY = pygame.USEREVENT + 2
-    pygame.time.set_timer(CREATE_ENEMY, 1500)      # установка таймера вызова функции создания нового "врага", 1500 мс
+    pygame.time.set_timer(CREATE_ENEMY, 1500)       # установка таймера вызова функции создания нового "врага", 1500 мс
 
     CHANGE_IMG_ENEMY = pygame.USEREVENT + 3
-    pygame.time.set_timer(CHANGE_IMG_ENEMY, 125)               # установка таймера вызова функции смены изображения "врага", 125 мс
+    pygame.time.set_timer(CHANGE_IMG_ENEMY, 125)    # установка таймера вызова функции смены изображения "врага", 125 мс
 
     CREATE_BONUS = pygame.USEREVENT + 4
-    pygame.time.set_timer(CREATE_BONUS, 1500)               # установка таймера вызова функции сосздания нового "бонуса", 2000 мс
+    pygame.time.set_timer(CREATE_BONUS, 1500)       # установка таймера вызова функции сосздания нового "бонуса", 2000 мс
+
+    CHANGE_IMG_BONUS = pygame.USEREVENT + 5
+    pygame.time.set_timer(CHANGE_IMG_BONUS, 125)    # установка таймера вызова функции смены изображения "врага", 125 мс
+
+    CHANGE_IMG_EXPLODE = pygame.USEREVENT + 6
+    pygame.time.set_timer(CHANGE_IMG_EXPLODE, 100)  # установка таймера вызова функции смены изображения "взрыва", 125 мс
+
+    GAME_OVER_TIMER = pygame.USEREVENT + 7
+
+    score = 0               # количество пойманных "бонусов"
+    score_fall = 0          # количество пропущенных "ракет"
+    score_damage = 0        # количество сбитых "ракет"
+    score_weapon_max = 9    # максимально допустимое количество "снарядов"
+    score_weapon = 3        # текущее количество "снарядов"
+    font_score = pygame.font.SysFont('Verdana', 20)         # устанавливаем шрифт и размер текста (px) для отображения "бонуса"
+    font_game_over = pygame.font.SysFont('Verdana', 40)     # устанавливаем шрифт и размер текста (px) для отображения "Game Over"
+
 
     # start game loop
     hero.active = True                              # флаг "герой жив", "герой умирает"
@@ -107,18 +155,32 @@ if __name__ == '__main__':
                 game_over = True                    # выход из основного цикла
             
             
-            if event.type == CHANGE_IMG_HERO:                       # если появилось событие изменить изображение "героя"
+            if event.type == CHANGE_IMG_HERO:       # если появилось событие изменить изображение "героя"
                 hero.img_change()
-                
-            if event.type == CREATE_ENEMY:                          # если появилось событие создать "врага"
-                enemies.append(create_enemy())                      # в список "врагов" добавляем нового "врага"
 
-            if event.type == CHANGE_IMG_ENEMY:                       # если появилось событие изменить изображение "героя"
+            if event.type == GAME_OVER_TIMER:       # если появилось событие "коней игры"
+                game_over = True
+                
+            if event.type == CREATE_ENEMY:          # если появилось событие создать "врага"
+                enemies.append(create_enemy())      # в список "врагов" добавляем нового "врага"
+
+            if event.type == CHANGE_IMG_ENEMY:      # если появилось событие изменить изображение "героя"
                 for enemy in enemies:
                     enemy.img_change()
 
-            if event.type == CREATE_BONUS:                          # если появилось событие создать "бонус"
-                bonuses.append(create_bonus())                      # в список "врагов" добавляем новый "бонус"
+            if event.type == CREATE_BONUS:          # если появилось событие создать "бонус"
+                bonuses.append(create_bonus())      # в список "врагов" добавляем новый "бонус"
+
+            if event.type == CHANGE_IMG_BONUS:      # если появилось событие изменить изображение "бонус"
+                for bonus in bonuses:
+                    bonus.img_change()   
+
+            if event.type == CHANGE_IMG_EXPLODE:      # если появилось событие изменить изображение "бонус"
+                for explotion in explotions:
+                    explotion.img_change()   
+                    if explotion.img_numer >= explotion.img_numer_max - 1:
+                        explotions.pop(explotions.index(explotion))           # удаляем "взрыв" из списка "взрывов"
+
 
         #################################################################################################################
         # управление "героем"
@@ -148,30 +210,99 @@ if __name__ == '__main__':
         # Бонусы
         for bonus in bonuses:
             bonus.move(-1, 1)    
+        
+        # Взрывы
+        for explotion in explotions:
+            explotion.move(-1, 1) 
+        
+        #################################################################################################################
+        # Вычисление пересечений
+        # Ракеты с бонусами, зданиями, пределами игрового поля, героем
+        for enemy in enemies:
+            delete_enemy = 0
+            explotion = 0
+            for bonus in bonuses:
+                if enemy.rect.colliderect(bonus.rect):      # если враг попал в бонус
+                    bonuses.pop(bonuses.index(bonus))       # удаляем "бонус" из списка "бонусов"            
+                    delete_enemy +=1
+                    explotion +=1
+                    score_fall += 1
+            if enemy.x + enemy.width <= 0:
+                    delete_enemy +=1
+                    score_fall += 1                         # увеличиваем счётчик прилётов
+            if enemy.y + enemy.height >  BILDINGS_HEIGHT + 200:
+                    delete_enemy +=1
+                    score_fall += 1                         # увеличиваем счётчик прилётов
+                    explotion +=1
+            if enemy.rect.colliderect(hero.rect):
+                    delete_enemy +=1
+                    explotion +=1
+                    score_damage += 1
+                    hero.active = False
+                    hero_explode = True
+                    pygame.time.set_timer(GAME_OVER_TIMER, 5000)               # установка таймера "конец игры", 5000 мс   
+
+            if delete_enemy:
+                if hero_explode:
+                    explotions.append(create_explotion_hero(enemy.x, enemy.y + enemy.height/2, (enemy.speed_x + BG_IMG_SPEED) /3, enemy.speed_y))
+                    hero_explode = False
+                else:
+                    explotions.append(create_explotion_air(enemy.x, enemy.y + enemy.height/2, (enemy.speed_x + BG_IMG_SPEED) /3, enemy.speed_y))
+                enemies.pop(enemies.index(enemy))           # удаляем "врага" из списка "врагов"
+        
+        # Ракеты с бонусами, зданиями, пределами игрового поля, героем
+        for bonus in bonuses:
+            delete_bonus = 0
+            if bonus.rect.colliderect(hero.rect):      # если бонус попал в героя
+                delete_bonus +=1
+                if score_weapon <= score_weapon_max -3:
+                    score_weapon += 3
+            if bonus.y + bonus.height > HEIGHT:
+                delete_bonus +=1
+
+            if delete_bonus:
+                bonuses.pop(bonuses.index(bonus))           # удаляем "бонус" из списка "бонусов"
+
+
+
 
         #################################################################################################################
         # Построение картинки
         # Фон
         for bg in backgrounds:
-            main_surface.blit(images[0][bg.img_numer], (bg.x, bg.y))        # накладываем поверность "бэкграунд" на основную поверхность "фон"
+            main_surface.blit(images[bg.type][bg.img_numer], (bg.x, bg.y))                # накладываем поверности "бэкграунд" на основную поверхность "фон"
         
         # Герой
-        main_surface.blit(images[1][hero.img_numer], (hero.x, hero.y))      # накладываем поверность "героя" на основную поверхность "фон"
+        if hero.active:
+            main_surface.blit(images[hero.type][hero.img_numer], (hero.x, hero.y))              # накладываем поверность "героя" на основную поверхность "фон"
         
         # Враги
         for enemy in enemies:
-            main_surface.blit(images[2][enemy.img_numer], (enemy.x, enemy.y))    # накладываем поверхность "врага" на основную поверхность "фон"
+            main_surface.blit(images[enemy.type][enemy.img_numer], (enemy.x, enemy.y))       # накладываем поверхности "врага" на основную поверхность "фон"
 
         # Бонусы
         for bonus in bonuses:
-            main_surface.blit(images[3][bonus.img_numer], (bonus.x, bonus.y))    # накладываем поверхность "врага" на основную поверхность "фон"
+            main_surface.blit(images[bonus.type][bonus.img_numer], (bonus.x, bonus.y))       # накладываем поверхности "бонусы" на основную поверхность "фон"
+
+        # Взрывы
+        for explotion in explotions:
+            main_surface.blit(images[explotion.type][explotion.img_numer], (explotion.x, explotion.y))    # накладываем поверхности "взрывы" на основную поверхность "фон"
+
+        # Инфо
+        score = score_damage - score_fall * 3
+        main_surface.blit(font_score.render('Пострілів: '+str(score_weapon), True, RED), (50, 0))  # накладываем поверность "текст" на основную поверхность "фон"
+        main_surface.blit(font_score.render('Ракет у повiтрi: '+str(len(enemies)), True, RED), (250, 0))  # накладываем поверность "текст" на основную поверхность "фон"
+        main_surface.blit(font_score.render('Прильотів: '+str(score_fall), True, RED), (510, 0))  # накладываем поверность "текст" на основную поверхность "фон"
+        main_surface.blit(font_score.render('Збито ракет: '+str(score_damage), True, RED), (730, 0))  # накладываем поверность "текст" на основную поверхность "фон"
+        main_surface.blit(font_score.render('Бонусів: '+str(score), True, RED), (970, 0))  # накладываем поверность "текст" на основную поверхность "фон"
+
 
         pygame.display.update()             # вывод прямоугольной области (списка областей) из буфера
         clock.tick(FPS)                     # вызывааем метод tick() класса Clock(), устанавливаем задержку для цикла, FPS
                                             # FPS раз в секунду с учётом времени на выполнение операций в самом цикле
  
-
-    # pygame.display.update()             # вывод прямоугольной области (списка областей) из буфера
-    # time.sleep(3)                       # устанавливаем задержку на 3 секунды
+    main_surface.blit(font_game_over.render('Гусаку капець. Грі кінець.', True, RED), (WIDTH/2-250, HEIGHT/2-20))  # накладываем поверность "текст" на основную поверхность "фон"
+    pygame.display.update()             # вывод прямоугольной области (списка областей) из буфера
+    time.sleep(4)                       # устанавливаем задержку на 4 секунды
     pygame.quit()                       # выход из модуля pygame
     quit()                              # выход из программы
