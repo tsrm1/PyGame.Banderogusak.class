@@ -1,0 +1,7 @@
+def load_all_music(directory, accept=('.wav', '.mp3', '.ogg', '.mdi')):
+    songs = {}
+    for song in os.listdir(directory):
+        name,ext = os.path.splitext(song)
+        if ext.lower() in accept:
+            songs[name] = os.path.join(directory, song)
+    return songs
