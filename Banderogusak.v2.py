@@ -148,7 +148,6 @@ if __name__ == '__main__':
 
 
     GAME_OVER_FINAL_COUNTDOWN = pygame.USEREVENT + 1
-    
     GAME_OVER_TIMER_MESSAGE = pygame.USEREVENT + 2
 
     CHANGE_IMG_HERO = pygame.USEREVENT + 3
@@ -373,7 +372,6 @@ if __name__ == '__main__':
                                             # FPS раз в секунду с учётом времени на выполнение операций в самом цикле
  
     
-    # time.sleep(4)                       # устанавливаем задержку на 4 секунды
     pygame.quit()                       # выход из модуля pygame
 
     if score > s["hiscore"]:
