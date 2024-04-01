@@ -2,6 +2,7 @@
     На основе ООП, JSON
     Анимация героя, фона, ракет, бонусов, оружия
     Загрузка и сохранение параметров игры в JSON-файл
+    Добавлены звуковые эффекты
 """
 
 import pygame                           # импортируем библиотеку pygame
@@ -9,19 +10,27 @@ from baseClass import BaseObject
 import spritesheet                      # импортируем библиотеку spritesheet (создали отдельно, находиться в той же папке)
 from os import listdir, path            # импортируем метод listdir
 import random                           # импортируем библиотеку random
-import time                             # импортируем библиотеку time  (time.sleep(3))
 import json
 
 
-if __name__ == '__main__':
-    settings_path = "settings.json"
+RED = (255, 0, 0),              # цвет красный
+backgrounds = []
+enemies = []
+bonuses = []
+weapons = []
+explotions = []
+hero_explode = False
+settings_path = "settings.json"
+score_sound = 0
 
+def load_settings():
     with open(settings_path) as file:
-        s = json.load(file)
+        return json.load(file)
 
+
+def init_gfx_window(WIDTH=1920, HEIGHT=1080):
     pygame.init()                           # инициализируем/вызываем библиотеку pygame
-    SCREEN_SIZE = s["WIDTH"], s["HEIGHT"]  # ширина и высота окна
-    main_surface = pygame.display.set_mode((SCREEN_SIZE), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN) # создаём поверхность отрисовки
+    main_surface = pygame.display.set_mode((WIDTH, HEIGHT), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN) # создаём поверхность отрисовки
     # main_surface = pygame.display.set_mode((screen_size), pygame.DOUBLEBUF | pygame.HWSURFACE) # создаём поверхность отрисовки
     # set_mode(Width, Height) - формируем/вызываем окно (щирина, высота) в pixel
     # pygame.DOUBLEBUF - двойная буферизация
@@ -33,14 +42,12 @@ if __name__ == '__main__':
     # pygame.SCALED - разрешение, зависящее от размеров рабочего стола
     pygame.display.set_caption("Banderogusak on PyGame")                        # устанавливаем название окна
     pygame.display.set_icon(pygame.image.load("image/Farm-Goose.ico"))              # устанавливаем иконку окна
+    return main_surface
+
+if __name__ == '__main__':
+    s = load_settings()
+    main_surface = init_gfx_window(WIDTH=s["WIDTH"], HEIGHT=s["HEIGHT"])
     clock = pygame.time.Clock()             # создаём экземпляр класса Clock
-    # FPS = s["FPS"]                                # устанавливаем частоту обработки цикла, FPS раз в секунду
-    RED = (255, 0, 0),              # цвет красный
-    backgrounds = []
-    enemies = []
-    bonuses = []
-    weapons = []
-    explotions = []
 
     score = 0               # количество "бонусов"
     score_fail = 0          # количество пропущенных "ракет"
@@ -49,147 +56,168 @@ if __name__ == '__main__':
     font_score = pygame.font.SysFont('Verdana', s["font_size_score"])         # устанавливаем шрифт и размер текста (px) для отображения "бонуса"
     font_game_over = pygame.font.SysFont('Verdana', s["font_size_game_over"])     # устанавливаем шрифт и размер текста (px) для отображения "Game Over"
     game_over_massege = False
-    
-    BG_IMAGES = [pygame.transform.scale(pygame.image.load(s["BG_IMG_PATH"]).convert(), SCREEN_SIZE)]    # создаём поверхность "бекграунд" и загружаем на неё изображение
-    BG_IMG_MAX = len(BG_IMAGES)
-    
     BILDINGS_HEIGHT = s["HEIGHT"] * 0.6    # высота неба над уровнем зданий
 
+
+    # изображения для анимации фона
+    BG_IMAGES = [pygame.transform.scale(pygame.image.load(s["BG_IMG_PATH"]).convert(), (s["WIDTH"], s["HEIGHT"]))]    # создаём поверхность "бекграунд" и загружаем на неё изображение
+
+
+    # изображения для анимации главного героя
     HERO_IMAGES = [pygame.transform.scale(pygame.image.load(s["HERO_IMG_PATH"] + '/' + file ).convert_alpha(), (s["HERO_IMG_SIZE_WIDTH"], s["HERO_IMG_SIZE_HEIGHT"])) for file in listdir(s["HERO_IMG_PATH"])]
-    HERO_IMG_MAX = len(HERO_IMAGES)
 
+
+    # изображения для анимации ракет
     ENEMY_IMAGES = [pygame.transform.scale(pygame.image.load(s["ENEMY_IMG_PATH"] + '/' + file).convert_alpha(), (s["ENEMY_IMG_SIZE_WIDTH"], s["ENEMY_IMG_SIZE_HEIGHT"])) for file in listdir(s["ENEMY_IMG_PATH"])]
-    ENEMY_IMG_MAX = len(ENEMY_IMAGES)
 
 
+    # изображения для анимации доп.снарядов
     BONUS_IMAGES = [pygame.transform.scale(pygame.image.load(s["BONUS_IMG_PATH"] + '/' + file).convert_alpha(), (s["BONUS_IMG_SIZE_WIDTH"], s["BONUS_IMG_SIZE_HEIGHT"])) for file in listdir(s["BONUS_IMG_PATH"])]  
-    BONUS_IMG_MAX = len(BONUS_IMAGES)
 
 
+    # изображения для анимации взрыва главного героя
     sprite_sheet_image_explotion_hero = pygame.image.load(s["HERO_EXPLOTION_IMG_PATH"]).convert_alpha()
     sprite_sheet_hero_explotion = spritesheet.SpriteSheet(sprite_sheet_image_explotion_hero)
     HERO_EXPLOTION_IMAGES = sprite_sheet_hero_explotion.strip_from_sheet(8, 6, 256, 256, s["HERO_EXPLOTION_IMG_SIZE_WIDTH"], s["HERO_EXPLOTION_IMG_SIZE_HEIGHT"])   # (col_row, col_span, width_in, height_in, width_out, height_out, colour=(0, 0, 0))
-    HERO_EXPLOTION_IMG_MAX = len(HERO_EXPLOTION_IMAGES)
 
+
+    # изображения для анимации взрыва ракет
     sprite_sheet_image_explotion_bonus = pygame.image.load(s["ENEMY_EXPLOTION_PATH"]).convert_alpha()
     sprite_sheet_bonus_explotion = spritesheet.SpriteSheet(sprite_sheet_image_explotion_bonus)
     ENEMY_EXPLOTION_IMAGES = sprite_sheet_bonus_explotion.strip_from_sheet(5, 4, 192, 192, s["ENEMY_EXPLOTION_SIZE_WIDTH"], s["ENEMY_EXPLOTION_SIZE_HEIGHT"])   # (col_row, col_span, width_in, height_in, width_out, height_out, colour=(0, 0, 0))
-    ENEMY_EXPLOTION_IMG_MAX = len(ENEMY_EXPLOTION_IMAGES)
 
 
-    # WEAPON_IMG_PATH = 'image/sprite_farbe_9.png'
-    # WEAPON_IMG_SIZE = 150, 150
+    # изображения для анимации хим.оружия
     sprite_sheet_image_weapon = pygame.image.load(s["WEAPON_IMG_PATH"]).convert_alpha()
     sprite_sheet_weapon = spritesheet.SpriteSheet(sprite_sheet_image_weapon)
     WEAPON_IMAGES = sprite_sheet_weapon.strip_from_sheet(3, 3, 700, 700, s["WEAPON_IMG_SIZE_WIDTH"], s["WEAPON_IMG_SIZE_HEIGHT"])   # (col_row, col_span, width, height, scale, colour=(0, 0, 0))
-    WEAPON_IMG_MAX = len(WEAPON_IMAGES)
 
+
+    # Формируем массив изображений для анимации
     images = [BG_IMAGES, HERO_IMAGES, ENEMY_IMAGES, BONUS_IMAGES, ENEMY_EXPLOTION_IMAGES, HERO_EXPLOTION_IMAGES, WEAPON_IMAGES]
 
       
     # Создаём фон, type = 0
-    backgrounds.append(BaseObject(0, 0, s["WIDTH"], s["HEIGHT"], 0, s["BG_IMG_SPEED"], 0, BG_IMG_MAX))  # инициазируем объект класса BaseObject 
-    backgrounds.append(BaseObject(s["WIDTH"], 0, s["WIDTH"], s["HEIGHT"], 0, s["BG_IMG_SPEED"], 0, BG_IMG_MAX))
+    backgrounds.append(BaseObject(0, 0, s["WIDTH"], s["HEIGHT"], 0, s["BG_IMG_SPEED"], 0, len(BG_IMAGES)))  # инициазируем объект класса BaseObject 
+    backgrounds.append(BaseObject(s["WIDTH"], 0, s["WIDTH"], s["HEIGHT"], 0, s["BG_IMG_SPEED"], 0, len(BG_IMAGES)))
 
 
     # Создаём героя, type = 1
-    hero = BaseObject(s["WIDTH"]/2, s["HEIGHT"]/2, s["HERO_IMG_SIZE_WIDTH"], s["HERO_IMG_SIZE_HEIGHT"], 1, s["HERO_SPEED_X"], s["HERO_SPEED_Y"], HERO_IMG_MAX)  # инициазируем объект класса BaseObject 
+    hero = BaseObject(s["WIDTH"]/2, s["HEIGHT"]/2, s["HERO_IMG_SIZE_WIDTH"], s["HERO_IMG_SIZE_HEIGHT"], 1, s["HERO_SPEED_X"], s["HERO_SPEED_Y"], len(HERO_IMAGES))  # инициазируем объект класса BaseObject 
 
 
     # Создаём врага, type = 2
     def create_enemy():
         enemy_img_speed_x = random.randint(s["BG_IMG_SPEED"] + s["ENEMY_SPEED_MIN"], s["BG_IMG_SPEED"] + s["ENEMY_SPEED_MAX"])    # создаём произвольную скорость "врага"        
         enemy_img_speed_y = random.random()         # создаём произвольную скорость "врага"        
-        enemy = BaseObject(s["WIDTH"]-70, random.randint(0, BILDINGS_HEIGHT), s["ENEMY_IMG_SIZE_WIDTH"], s["ENEMY_IMG_SIZE_HEIGHT"], 2, enemy_img_speed_x, enemy_img_speed_y, ENEMY_IMG_MAX)  # инициазируем объект класса BaseObject 
+        enemy = BaseObject(s["WIDTH"]-70, random.randint(0, BILDINGS_HEIGHT), s["ENEMY_IMG_SIZE_WIDTH"], s["ENEMY_IMG_SIZE_HEIGHT"], 2, enemy_img_speed_x, enemy_img_speed_y, len(ENEMY_IMAGES))  # инициазируем объект класса BaseObject 
         return enemy                                # возвращяем данные очередного "врага"
-    
+
+
     # Создаём бонус, type = 3
     def create_bonus():
         bonus_img_speed = random.randint(s["BONUS_SPEED_MIN"], s["BONUS_SPEED_MAX"])      # создаём произвольную скорость "бонуса"   
-        bonus = BaseObject(random.randint(0, s["WIDTH"]), 0, s["BONUS_IMG_SIZE_WIDTH"], s["BONUS_IMG_SIZE_HEIGHT"], 3, s["BG_IMG_SPEED"], bonus_img_speed, BONUS_IMG_MAX)
+        bonus = BaseObject(random.randint(0, s["WIDTH"]), 0, s["BONUS_IMG_SIZE_WIDTH"], s["BONUS_IMG_SIZE_HEIGHT"], 3, s["BG_IMG_SPEED"], bonus_img_speed, len(BONUS_IMAGES))
         return bonus                                # возвращяем данные очередного "бонуса"
+
 
     # Создаём взрыв, type = 4
     def create_explotion_air(x, y, speed_x, speed_y):
-        exploation = BaseObject(x - s["ENEMY_EXPLOTION_SIZE_WIDTH"] / 2, y - s["ENEMY_EXPLOTION_SIZE_HEIGHT"] / 2, s["ENEMY_EXPLOTION_SIZE_WIDTH"], s["ENEMY_EXPLOTION_SIZE_HEIGHT"], 4, speed_x, speed_y, ENEMY_EXPLOTION_IMG_MAX)
+        exploation = BaseObject(x - s["ENEMY_EXPLOTION_SIZE_WIDTH"] / 2, y - s["ENEMY_EXPLOTION_SIZE_HEIGHT"] / 2, s["ENEMY_EXPLOTION_SIZE_WIDTH"], s["ENEMY_EXPLOTION_SIZE_HEIGHT"], 4, speed_x, speed_y, len(ENEMY_EXPLOTION_IMAGES))
         return exploation                                # возвращяем данные очередного "воздушного взрыва"
     
+
     # Создаём взрыв, type = 5
     def create_explotion_hero(x, y, speed_x, speed_y):
-        exploation = BaseObject(x - s["HERO_EXPLOTION_IMG_SIZE_WIDTH"] / 2, y - s["HERO_EXPLOTION_IMG_SIZE_HEIGHT"] / 2, s["HERO_EXPLOTION_IMG_SIZE_WIDTH"], s["HERO_EXPLOTION_IMG_SIZE_HEIGHT"], 5, speed_x, speed_y, HERO_EXPLOTION_IMG_MAX)
+        exploation = BaseObject(x - s["HERO_EXPLOTION_IMG_SIZE_WIDTH"] / 2, y - s["HERO_EXPLOTION_IMG_SIZE_HEIGHT"] / 2, s["HERO_EXPLOTION_IMG_SIZE_WIDTH"], s["HERO_EXPLOTION_IMG_SIZE_HEIGHT"], 5, speed_x, speed_y, len(HERO_EXPLOTION_IMAGES))
         return exploation                                # возвращяем данные очередного "воздушного взрыва"
-    hero_explode = False
+
 
     # Создаём оружие, type = 6
     def create_weapon(x, y):
-        weapon = BaseObject(x - s["WEAPON_IMG_SIZE_WIDTH"], y - s["WEAPON_IMG_SIZE_HEIGHT"] / 2, s["WEAPON_IMG_SIZE_WIDTH"], s["WEAPON_IMG_SIZE_HEIGHT"], 6, s["BG_IMG_SPEED"], 0, WEAPON_IMG_MAX)  # инициазируем объект класса BaseObject 
+        weapon = BaseObject(x - s["WEAPON_IMG_SIZE_WIDTH"], y - s["WEAPON_IMG_SIZE_HEIGHT"] / 2, s["WEAPON_IMG_SIZE_WIDTH"], s["WEAPON_IMG_SIZE_HEIGHT"], 6, s["BG_IMG_SPEED"], 0, len(WEAPON_IMAGES))  # инициазируем объект класса BaseObject 
         return weapon                                # возвращяем данные очередного "оружия"
 
-    # Запускаем фоновую музыку
-    MUSIC_PATH = "music"
-
-    # def load_all_music(directory, accept=('.wav', '.mp3', '.ogg', '.mdi')):
-    #     songs = {}
-    #     for song in listdir(directory):
-    #         name,ext = path.splitext(song)
-    #         if ext.lower() in accept:
-    #             songs[name] = path.join(directory, song)
-    #     return songs
-    
-    def load_all_music_list(directory, accept=('.wav', '.mp3', '.ogg', '.mdi')):
+    # загрузка всех аудиофайлов в каталоге
+    def load_all_music_in_folder(directory, accept=('.wav', '.mp3', '.ogg', '.mdi')):
         songs = []
         for song in listdir(directory):
             name,ext = path.splitext(song)
             if ext.lower() in accept:
                 songs.append(path.join(directory, song)) 
         return songs
+  
+    # воспроизведение звукового эффекта
+    def play_sound(sound_path):
+        global mixer
+        snd = mixer.Sound(sound_path)
+        chanel = snd.play()
+        if not hero.active:
+           chanel.set_volume(0.4)
 
+
+    # загрузка аудиофайлов (фоновая музыка и спецэффекты)
+    music_playlist = load_all_music_in_folder(s["SOUNDTRACK_PATH"])
+    boom1_playlist = load_all_music_in_folder(s["EXPLODE_SMALL_PATH"])
+    boom2_playlist = load_all_music_in_folder(s["EXPLODE_BIG_PATH"])
+    score_playlist = load_all_music_in_folder(s["SCORE_PATH"])
     
+    
+    # запуск модуля звукового микшера
+    mixer = pygame.mixer
+    mixer.init()
+
+    # запуск фоновой музыки
+    # "SOUNDTRACK_NUM" = 0          - запускаем произвольную фоновую музыку 
+    # "SOUNDTRACK_NUM" = 1, 2, 3    - запускаем фоновую музыку 1, 2, 3 по списку 
+    if s["SOUNDTRACK_NUM"]:
+        soundtrack = mixer.Sound(music_playlist[s["SOUNDTRACK_NUM"]-1])
+    else:
+        soundtrack = mixer.Sound(music_playlist[random.randint(0, len(music_playlist)-1)])
+    channel_1 = soundtrack.play()
+    channel_1.set_volume(0.4)
 
 
+    # создание цикличных событий 
     GAME_OVER_FINAL_COUNTDOWN = pygame.USEREVENT + 1
     GAME_OVER_TIMER_MESSAGE = pygame.USEREVENT + 2
+
 
     CHANGE_IMG_HERO = pygame.USEREVENT + 3
     pygame.time.set_timer(CHANGE_IMG_HERO, s["CHANGE_IMG_HERO_TIMER"])     # установка таймера вызова функции смены изображения "героя", 125 мс
 
+
     CREATE_ENEMY = pygame.USEREVENT + 4
     pygame.time.set_timer(CREATE_ENEMY, s["CREATE_ENEMY_TIMER"])       # установка таймера вызова функции создания нового "врага", 1500 мс
+
 
     CHANGE_IMG_ENEMY = pygame.USEREVENT + 5
     pygame.time.set_timer(CHANGE_IMG_ENEMY, s["CHANGE_IMG_ENEMY_TIMER"])    # установка таймера вызова функции смены изображения "врага", 125 мс
 
+
     CREATE_BONUS = pygame.USEREVENT + 6
     pygame.time.set_timer(CREATE_BONUS, s["CREATE_BONUS_TIMER"])       # установка таймера вызова функции сосздания нового "бонуса", 2000 мс
+
 
     CHANGE_IMG_BONUS = pygame.USEREVENT + 7
     pygame.time.set_timer(CHANGE_IMG_BONUS, s["CHANGE_IMG_BONUS_TIMER"])    # установка таймера вызова функции смены изображения "врага", 125 мс
 
+
     CHANGE_IMG_EXPLODE = pygame.USEREVENT + 8
     pygame.time.set_timer(CHANGE_IMG_EXPLODE, s["CHANGE_IMG_EXPLODE_TIMER"])  # установка таймера вызова функции смены изображения "взрыва", 100 мс
+
 
     CHANGE_IMG_WEAPONS = pygame.USEREVENT + 9
     pygame.time.set_timer(CHANGE_IMG_WEAPONS, s["CHANGE_IMG_WEAPONS_TIMER"])    # установка таймера вызова функции смены изображения "врага", 300 мс
 
-    music_playlist = load_all_music_list(MUSIC_PATH)
-    mixer = pygame.mixer
-    mixer.init(44100)
-    index = 0
-    # pygame.mixer.music.load(music_playlist[index])
-    # pygame.mixer.music.play()
-
-    sound = mixer.Sound(music_playlist[index])
-    channel = sound.play()
 
 
-    
     # start game loop
     hero.active = True                              # флаг "герой жив", "герой умирает"
     game_over = False                               # флаг "конец игры", игра закончилась
     while not game_over:                            # start game loop
-
-        if not channel.get_busy():
-            channel = sound.play()
+        if not channel_1.get_busy() and hero.active:
+            channel_1 = soundtrack.play()
 
         for event in pygame.event.get():            # переменная event принимает значение сообщений из очереди событий pygame.event.
             if event.type == pygame.QUIT:           # проверяем ТИП события event, равно ли QUIT (нажата ли иконка закрытия рабочего окна)
@@ -294,21 +322,24 @@ if __name__ == '__main__':
                     delete_enemy +=1
                     score_fail += 1                         # увеличиваем счётчик прилётов
                     explotion +=1
-            if enemy.rect.colliderect(hero.rect):
+            if hero.active and enemy.rect.colliderect(hero.rect):
                     delete_enemy +=1
                     explotion +=1
                     score_damage += 1
-                    hero.active = False
                     hero_explode = True
-                    pygame.time.set_timer(GAME_OVER_FINAL_COUNTDOWN, 8000)               # установка таймера "конец игры", 8000 мс   
+                    pygame.time.set_timer(GAME_OVER_FINAL_COUNTDOWN, 15000)               # установка таймера "конец игры", 8000 мс   
                     pygame.time.set_timer(GAME_OVER_TIMER_MESSAGE, 4000)               # установка таймера вывод сообщения "Game over", 5000 мс   
 
             if delete_enemy:
                 if hero_explode:
                     explotions.append(create_explotion_hero(enemy.x, enemy.y + enemy.height/2, (enemy.speed_x + s["BG_IMG_SPEED"]) /3, enemy.speed_y))
+                    channel_1.fadeout(2000)
+                    play_sound(boom2_playlist[random.randint(0, len(boom2_playlist)-1)])
+                    hero.active = False
                     hero_explode = False
                 else:
                     explotions.append(create_explotion_air(enemy.x, enemy.y + enemy.height/2, (enemy.speed_x + s["BG_IMG_SPEED"]) /3, enemy.speed_y))
+                    play_sound(boom1_playlist[random.randint(0, len(boom1_playlist)-1)])
                 enemies.pop(enemies.index(enemy))           # удаляем "врага" из списка "врагов"
         
         # Бонусы с пределами игрового поля, героем
@@ -367,12 +398,22 @@ if __name__ == '__main__':
             main_surface.blit(font_game_over.render('     Грі кінець.', True, RED), (s["WIDTH"]/2-250, s["HEIGHT"]/2-50))  # накладываем поверность "текст" на основную поверхность "фон"
             main_surface.blit(font_game_over.render('Твій результат: ' + str(score), True, RED), (s["WIDTH"]/2-250, s["HEIGHT"]/2+20))  # накладываем поверность "текст" на основную поверхность "фон"
 
+            score_sound += 1
+            if score_sound == 1:
+                # play_sound(score_playlist[random.randint(0, len(score_playlist)-1)])
+                channel_1 = soundtrack.stop()
+                soundtrack = mixer.Sound(score_playlist[random.randint(0, len(score_playlist)-1)])
+                channel_1 = soundtrack.play()
+                channel_1.set_volume(1)
+
+
         pygame.display.update()             # вывод прямоугольной области (списка областей) из буфера
         clock.tick(s["FPS"])                     # вызывааем метод tick() класса Clock(), устанавливаем задержку для цикла, FPS
                                             # FPS раз в секунду с учётом времени на выполнение операций в самом цикле
  
     
     pygame.quit()                       # выход из модуля pygame
+
 
     if score > s["hiscore"]:
         s["hiscore"] = score
